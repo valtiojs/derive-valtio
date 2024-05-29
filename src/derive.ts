@@ -1,83 +1,83 @@
-import { getVersion, proxy, subscribe } from 'valtio/vanilla'
+import { getVersion, proxy, subscribe } from 'valtio/vanilla';
 
-type DeriveGet = <T extends object>(proxyObject: T) => T
+type DeriveGet = <T extends object>(proxyObject: T) => T;
 
 type Subscription = {
-  s: object // "s"ourceObject
-  d: object // "d"erivedObject
-  k: string // derived "k"ey
-  c: () => void // "c"allback
-  n: boolean // "n"otifyInSync
-  i: string[] // "i"goringKeys
-  p?: Promise<void> // "p"romise
-}
+  s: object; // "s"ourceObject
+  d: object; // "d"erivedObject
+  k: string; // derived "k"ey
+  c: () => void; // "c"allback
+  n: boolean; // "n"otifyInSync
+  i: string[]; // "i"goringKeys
+  p?: Promise<void>; // "p"romise
+};
 
 type SourceObjectEntry = [
   subscriptions: Set<Subscription>,
   unsubscribe: () => void,
   pendingCount: number,
   pendingCallbacks: Set<() => void>,
-]
+];
 
-type DerivedObjectEntry = [subscriptions: Set<Subscription>]
+type DerivedObjectEntry = [subscriptions: Set<Subscription>];
 
-const sourceObjectMap = new WeakMap<object, SourceObjectEntry>()
-const derivedObjectMap = new WeakMap<object, DerivedObjectEntry>()
+const sourceObjectMap = new WeakMap<object, SourceObjectEntry>();
+const derivedObjectMap = new WeakMap<object, DerivedObjectEntry>();
 
 const markPending = (sourceObject: object, callback?: () => void) => {
-  const sourceObjectEntry = sourceObjectMap.get(sourceObject)
+  const sourceObjectEntry = sourceObjectMap.get(sourceObject);
   if (sourceObjectEntry) {
     sourceObjectEntry[0].forEach((subscription) => {
-      const { d: derivedObject } = subscription
+      const { d: derivedObject } = subscription;
       if (sourceObject !== derivedObject) {
-        markPending(derivedObject)
+        markPending(derivedObject);
       }
-    })
-    ++sourceObjectEntry[2] // pendingCount
+    });
+    ++sourceObjectEntry[2]; // pendingCount
     if (callback) {
-      sourceObjectEntry[3].add(callback) // pendingCallbacks
+      sourceObjectEntry[3].add(callback); // pendingCallbacks
     }
   }
-}
+};
 
 // has side effect (even though used in Array.map)
 const checkPending = (sourceObject: object, callback: () => void) => {
-  const sourceObjectEntry = sourceObjectMap.get(sourceObject)
+  const sourceObjectEntry = sourceObjectMap.get(sourceObject);
   if (sourceObjectEntry?.[2]) {
-    sourceObjectEntry[3].add(callback) // pendingCallbacks
-    return true
+    sourceObjectEntry[3].add(callback); // pendingCallbacks
+    return true;
   }
-  return false
-}
+  return false;
+};
 
 const unmarkPending = (sourceObject: object) => {
-  const sourceObjectEntry = sourceObjectMap.get(sourceObject)
+  const sourceObjectEntry = sourceObjectMap.get(sourceObject);
   if (sourceObjectEntry) {
-    --sourceObjectEntry[2] // pendingCount
+    --sourceObjectEntry[2]; // pendingCount
     if (!sourceObjectEntry[2]) {
-      sourceObjectEntry[3].forEach((callback) => callback())
-      sourceObjectEntry[3].clear() // pendingCallbacks
+      sourceObjectEntry[3].forEach((callback) => callback());
+      sourceObjectEntry[3].clear(); // pendingCallbacks
     }
     sourceObjectEntry[0].forEach((subscription) => {
-      const { d: derivedObject } = subscription
+      const { d: derivedObject } = subscription;
       if (sourceObject !== derivedObject) {
-        unmarkPending(derivedObject)
+        unmarkPending(derivedObject);
       }
-    })
+    });
   }
-}
+};
 
 const addSubscription = (subscription: Subscription) => {
-  const { s: sourceObject, d: derivedObject } = subscription
-  let derivedObjectEntry = derivedObjectMap.get(derivedObject)
+  const { s: sourceObject, d: derivedObject } = subscription;
+  let derivedObjectEntry = derivedObjectMap.get(derivedObject);
   if (!derivedObjectEntry) {
-    derivedObjectEntry = [new Set()]
-    derivedObjectMap.set(subscription.d, derivedObjectEntry)
+    derivedObjectEntry = [new Set()];
+    derivedObjectMap.set(subscription.d, derivedObjectEntry);
   }
-  derivedObjectEntry[0].add(subscription)
-  let sourceObjectEntry = sourceObjectMap.get(sourceObject)
+  derivedObjectEntry[0].add(subscription);
+  let sourceObjectEntry = sourceObjectMap.get(sourceObject);
   if (!sourceObjectEntry) {
-    const subscriptions = new Set<Subscription>()
+    const subscriptions = new Set<Subscription>();
     const unsubscribe = subscribe(
       sourceObject,
       (ops) => {
@@ -87,65 +87,65 @@ const addSubscription = (subscription: Subscription) => {
             c: callback,
             n: notifyInSync,
             i: ignoreKeys,
-          } = subscription
+          } = subscription;
           if (
             sourceObject === derivedObject &&
             ops.every(
               (op) =>
-                op[1].length === 1 && ignoreKeys.includes(op[1][0] as string)
+                op[1].length === 1 && ignoreKeys.includes(op[1][0] as string),
             )
           ) {
             // only setting derived properties
-            return
+            return;
           }
           if (subscription.p) {
             // already scheduled
-            return
+            return;
           }
-          markPending(sourceObject, callback)
+          markPending(sourceObject, callback);
           if (notifyInSync) {
-            unmarkPending(sourceObject)
+            unmarkPending(sourceObject);
           } else {
             subscription.p = Promise.resolve().then(() => {
-              delete subscription.p // promise
-              unmarkPending(sourceObject)
-            })
+              delete subscription.p; // promise
+              unmarkPending(sourceObject);
+            });
           }
-        })
+        });
       },
-      true
-    )
-    sourceObjectEntry = [subscriptions, unsubscribe, 0, new Set()]
-    sourceObjectMap.set(sourceObject, sourceObjectEntry)
+      true,
+    );
+    sourceObjectEntry = [subscriptions, unsubscribe, 0, new Set()];
+    sourceObjectMap.set(sourceObject, sourceObjectEntry);
   }
-  sourceObjectEntry[0].add(subscription)
-}
+  sourceObjectEntry[0].add(subscription);
+};
 
 const removeSubscription = (subscription: Subscription) => {
-  const { s: sourceObject, d: derivedObject } = subscription
-  const derivedObjectEntry = derivedObjectMap.get(derivedObject)
-  derivedObjectEntry?.[0].delete(subscription)
+  const { s: sourceObject, d: derivedObject } = subscription;
+  const derivedObjectEntry = derivedObjectMap.get(derivedObject);
+  derivedObjectEntry?.[0].delete(subscription);
   if (derivedObjectEntry?.[0].size === 0) {
-    derivedObjectMap.delete(derivedObject)
+    derivedObjectMap.delete(derivedObject);
   }
-  const sourceObjectEntry = sourceObjectMap.get(sourceObject)
+  const sourceObjectEntry = sourceObjectMap.get(sourceObject);
   if (sourceObjectEntry) {
-    const [subscriptions, unsubscribe] = sourceObjectEntry
-    subscriptions.delete(subscription)
+    const [subscriptions, unsubscribe] = sourceObjectEntry;
+    subscriptions.delete(subscription);
     if (!subscriptions.size) {
-      unsubscribe()
-      sourceObjectMap.delete(sourceObject)
+      unsubscribe();
+      sourceObjectMap.delete(sourceObject);
     }
   }
-}
+};
 
 const listSubscriptions = (derivedObject: object) => {
-  const derivedObjectEntry = derivedObjectMap.get(derivedObject)
+  const derivedObjectEntry = derivedObjectMap.get(derivedObject);
   if (derivedObjectEntry) {
-    return Array.from(derivedObjectEntry[0]) // NOTE do we need to copy?
+    return Array.from(derivedObjectEntry[0]); // NOTE do we need to copy?
   }
-  return []
-}
+  return [];
+};
 
 // NOTE This is experimentally exported.
 // The availability is not guaranteed, and it will be renamed,
@@ -155,7 +155,7 @@ export const unstable_deriveSubscriptions = {
   add: addSubscription,
   remove: removeSubscription,
   list: listSubscriptions,
-}
+};
 
 /**
  * derive
@@ -183,26 +183,26 @@ export const unstable_deriveSubscriptions = {
  */
 export function derive<T extends object, U extends object>(
   derivedFns: {
-    [K in keyof U]: (get: DeriveGet) => U[K]
+    [K in keyof U]: (get: DeriveGet) => U[K];
   },
   options?: {
-    proxy?: T
-    sync?: boolean
-  }
+    proxy?: T;
+    sync?: boolean;
+  },
 ) {
-  const proxyObject = (options?.proxy || proxy({})) as U
-  const notifyInSync = !!options?.sync
-  const derivedKeys = Object.keys(derivedFns)
+  const proxyObject = (options?.proxy || proxy({})) as U;
+  const notifyInSync = !!options?.sync;
+  const derivedKeys = Object.keys(derivedFns);
   derivedKeys.forEach((key) => {
     if (Object.getOwnPropertyDescriptor(proxyObject, key)) {
-      throw new Error('object property already defined')
+      throw new Error('object property already defined');
     }
-    const fn = derivedFns[key as keyof U]
+    const fn = derivedFns[key as keyof U];
     type DependencyEntry = {
-      v: number // "v"ersion
-      s?: Subscription // "s"ubscription
-    }
-    let lastDependencies: Map<object, DependencyEntry> | null = null
+      v: number; // "v"ersion
+      s?: Subscription; // "s"ubscription
+    };
+    let lastDependencies: Map<object, DependencyEntry> | null = null;
     const evaluate = () => {
       if (lastDependencies) {
         if (
@@ -211,28 +211,28 @@ export function derive<T extends object, U extends object>(
             .some((isPending) => isPending)
         ) {
           // some dependencies are pending
-          return
+          return;
         }
         if (
           Array.from(lastDependencies).every(
-            ([p, entry]) => getVersion(p) === entry.v
+            ([p, entry]) => getVersion(p) === entry.v,
           )
         ) {
           // no dependencies are changed
-          return
+          return;
         }
       }
-      const dependencies = new Map<object, DependencyEntry>()
+      const dependencies = new Map<object, DependencyEntry>();
       const get = <P extends object>(p: P) => {
-        dependencies.set(p, { v: getVersion(p) as number })
-        return p
-      }
-      const value = fn(get)
+        dependencies.set(p, { v: getVersion(p) as number });
+        return p;
+      };
+      const value = fn(get);
       const subscribeToDependencies = () => {
         dependencies.forEach((entry, p) => {
-          const lastSubscription = lastDependencies?.get(p)?.s
+          const lastSubscription = lastDependencies?.get(p)?.s;
           if (lastSubscription) {
-            entry.s = lastSubscription
+            entry.s = lastSubscription;
           } else {
             const subscription: Subscription = {
               s: p, // sourceObject
@@ -241,28 +241,28 @@ export function derive<T extends object, U extends object>(
               c: evaluate, // callback
               n: notifyInSync,
               i: derivedKeys, // ignoringKeys
-            }
-            addSubscription(subscription)
-            entry.s = subscription
+            };
+            addSubscription(subscription);
+            entry.s = subscription;
           }
-        })
+        });
         lastDependencies?.forEach((entry, p) => {
           if (!dependencies.has(p) && entry.s) {
-            removeSubscription(entry.s)
+            removeSubscription(entry.s);
           }
-        })
-        lastDependencies = dependencies
-      }
+        });
+        lastDependencies = dependencies;
+      };
       if ((value as unknown) instanceof Promise) {
-        ;(value as Promise<unknown>).finally(subscribeToDependencies)
+        (value as Promise<unknown>).finally(subscribeToDependencies);
       } else {
-        subscribeToDependencies()
+        subscribeToDependencies();
       }
-      proxyObject[key as keyof U] = value
-    }
-    evaluate()
-  })
-  return proxyObject as T & U
+      proxyObject[key as keyof U] = value;
+    };
+    evaluate();
+  });
+  return proxyObject as T & U;
 }
 
 /**
@@ -290,23 +290,23 @@ export function derive<T extends object, U extends object>(
 export function underive<T extends object, U extends object>(
   proxyObject: T & U,
   options?: {
-    delete?: boolean
-    keys?: (keyof U)[]
-  }
+    delete?: boolean;
+    keys?: (keyof U)[];
+  },
 ) {
-  const keysToDelete = options?.delete ? new Set<keyof U>() : null
+  const keysToDelete = options?.delete ? new Set<keyof U>() : null;
   listSubscriptions(proxyObject).forEach((subscription) => {
-    const { k: key } = subscription
+    const { k: key } = subscription;
     if (!options?.keys || options.keys.includes(key as keyof U)) {
-      removeSubscription(subscription)
+      removeSubscription(subscription);
       if (keysToDelete) {
-        keysToDelete.add(key as keyof U)
+        keysToDelete.add(key as keyof U);
       }
     }
-  })
+  });
   if (keysToDelete) {
     keysToDelete.forEach((key) => {
-      delete proxyObject[key]
-    })
+      delete proxyObject[key];
+    });
   }
 }

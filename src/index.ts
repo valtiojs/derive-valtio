@@ -1,1 +1,1 @@
-export { derive, underive, unstable_deriveSubscriptions } from './derive'
+export { derive, underive, unstable_deriveSubscriptions } from './derive.js';

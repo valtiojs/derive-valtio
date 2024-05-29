@@ -1,18 +1,18 @@
-import { derive } from 'derive-valtio'
-import { proxy, useSnapshot } from 'valtio'
+import { derive } from 'derive-valtio';
+import { proxy, useSnapshot } from 'valtio';
 
-const state = proxy({ count: 0 })
-const derived = derive({ double: (get) => get(state).count * 2 })
+const state = proxy({ count: 0 });
+const derived = derive({ double: (get) => get(state).count * 2 });
 
 const Counter = () => {
-  const snap = useSnapshot(derived)
+  const snap = useSnapshot(derived);
 
   return (
     <>
       count: {snap.double} <button onClick={() => ++state.count}>inc</button>
     </>
-  )
-}
+  );
+};
 
 export default function App() {
   return (
@@ -21,5 +21,5 @@ export default function App() {
       <h2>Start editing to see some magic happen!</h2>
       <Counter />
     </div>
-  )
+  );
 }
