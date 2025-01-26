@@ -1,8 +1,16 @@
 /// <reference types="react/experimental" />
 
+/* eslint-disable react-compiler/react-compiler */
+
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { StrictMode, Suspense, useEffect, useRef } from 'react';
-import { cleanup, fireEvent, render } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from '@testing-library/react';
 import { proxy, snapshot, subscribe, useSnapshot } from 'valtio';
 import { derive, underive } from 'derive-valtio';
 
@@ -179,20 +187,22 @@ test('async derive', async () => {
     );
   };
 
-  const { getByText, findByText } = render(
-    <StrictMode>
-      <Suspense fallback="loading">
-        <Counter />
-      </Suspense>
-    </StrictMode>,
-  );
+  await act(async () => {
+    render(
+      <StrictMode>
+        <Suspense fallback="loading">
+          <Counter />
+        </Suspense>
+      </StrictMode>,
+    );
+  });
 
-  await findByText('loading');
-  await findByText('count: 0, delayedCount: 1');
+  await screen.findByText('loading');
+  await screen.findByText('count: 0, delayedCount: 1');
 
-  fireEvent.click(getByText('button'));
-  await findByText('loading');
-  await findByText('count: 1, delayedCount: 2');
+  fireEvent.click(screen.getByText('button'));
+  await screen.findByText('loading');
+  await screen.findByText('count: 1, delayedCount: 2');
 });
 
 test('nested emulation with derive', async () => {
@@ -318,17 +328,17 @@ describe('glitch free', () => {
       );
     };
 
-    const { getByText, findByText } = render(
+    render(
       <>
         <App />
       </>,
     );
 
-    await findByText('value: v0: 0, v1: 0, v2: 0 (commits: 1)');
+    await screen.findByText('value: v0: 0, v1: 0, v2: 0 (commits: 1)');
     expect(computeValue).toBeCalledTimes(1);
 
-    fireEvent.click(getByText('button'));
-    await findByText('value: v0: 1, v1: 1, v2: 1 (commits: 2)');
+    fireEvent.click(screen.getByText('button'));
+    await screen.findByText('value: v0: 1, v1: 1, v2: 1 (commits: 2)');
     expect(computeValue).toBeCalledTimes(2);
   });
 
@@ -360,17 +370,17 @@ describe('glitch free', () => {
       );
     };
 
-    const { getByText, findByText } = render(
+    render(
       <StrictMode>
         <App />
       </StrictMode>,
     );
 
-    await findByText('value: 0');
+    await screen.findByText('value: 0');
     expect(computeValue).toBeCalledTimes(1);
 
-    fireEvent.click(getByText('button'));
-    await findByText('value: 1');
+    fireEvent.click(screen.getByText('button'));
+    await screen.findByText('value: 1');
     expect(computeValue).toBeCalledTimes(2);
   });
 
@@ -406,17 +416,17 @@ describe('glitch free', () => {
       );
     };
 
-    const { getByText, findByText } = render(
+    render(
       <StrictMode>
         <App />
       </StrictMode>,
     );
 
-    await findByText('value: 0');
+    await screen.findByText('value: 0');
     expect(computeValue).toBeCalledTimes(1);
 
-    fireEvent.click(getByText('button'));
-    await findByText('value: 1');
+    fireEvent.click(screen.getByText('button'));
+    await screen.findByText('value: 1');
     expect(computeValue).toBeCalledTimes(2);
   });
 });
@@ -433,6 +443,7 @@ describe('two derived properties', () => {
     derive(
       {
         derived1: (get) => {
+          // eslint-disable-next-line @typescript-eslint/no-unused-expressions
           get(state).a;
           return 1;
         },
@@ -442,6 +453,7 @@ describe('two derived properties', () => {
     derive(
       {
         derived2: (get) => {
+          // eslint-disable-next-line @typescript-eslint/no-unused-expressions
           get(state).a;
           return 1;
         },
@@ -458,10 +470,12 @@ describe('two derived properties', () => {
     derive(
       {
         derived1: (get) => {
+          // eslint-disable-next-line @typescript-eslint/no-unused-expressions
           get(state).a;
           return {};
         },
         derived2: (get) => {
+          // eslint-disable-next-line @typescript-eslint/no-unused-expressions
           get(state).a;
           return {};
         },
@@ -478,6 +492,7 @@ describe('two derived properties', () => {
     derive(
       {
         derived1: (get) => {
+          // eslint-disable-next-line @typescript-eslint/no-unused-expressions
           get(state).a;
           return {};
         },
@@ -487,6 +502,7 @@ describe('two derived properties', () => {
     derive(
       {
         derived2: (get) => {
+          // eslint-disable-next-line @typescript-eslint/no-unused-expressions
           get(state).a;
           return {};
         },

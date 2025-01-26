@@ -12,7 +12,7 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "derive-valtio": ["./src/index.js"]
+      "derive-valtio": ["./src/index.ts"]
     }
   },
   "exclude": ["dist", "examples"]
