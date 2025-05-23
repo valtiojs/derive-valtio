@@ -1,7 +1,5 @@
 /// <reference types="react/experimental" />
 
-/* eslint-disable react-compiler/react-compiler */
-
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { StrictMode, Suspense, useEffect, useRef } from 'react';
 import {
